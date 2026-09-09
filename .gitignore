@@ -1,0 +1,48 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# IDE / editor artifacts
+.vscode/
+.idea/
+*.swp
+*.swo
+.windsurf/
+.cursor/
+.devin/
+
+# Quarto artifacts
+.quarto/
+/.quarto/
+*_files/
+*_cache/
+/index.html
+/index_files/
+/*.html
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
