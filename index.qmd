@@ -1,0 +1,121 @@
+---
+title: "A comparison of results across multiple models."
+---
+
+# Standard Imports + Data Listings
+
+```{python}
+import pandas as pd
+import numpy as np
+
+from IPython.display import Markdown, display
+
+file_list = [
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/GPT-OSS_20B_temp_1.50.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/GPT-OSS_20B_temp_1.65.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/GPT-OSS_20B_temp_1.75.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/GPT-OSS_20B_temp_1.85.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/PRCA_qwen2.5_7b_results_tempOf_1.65.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/PRCA_qwen2.5_7b_results_tempOf_1.75.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/PRCA_qwen2.5_7b_results_tempOf_1.85.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/PRCA_qwen2.5_7b_results_tempOf_2.00.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/prca_results_llama3.2_3b_temp1.65_cleaned.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/prca_results_mistral-nemo_12b_temp1.65_cleaned.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/prca_results_qwen3.6_27b_temp1.65_cleaned.csv",
+]
+
+```
+
+# Build Table
+
+```{python}
+prca_cols = [f'prca_{i}' for i in range(1, 13)]
+group_cols = prca_cols[:6]
+interpersonal_cols = prca_cols[6:]
+
+# Each scale we report on, mapped to the item columns that make it up.
+scales = {
+    'Group CA': group_cols,
+    'Interpersonal CA': interpersonal_cols,
+    'Both Group and Interpersonal CA': prca_cols,
+}
+
+def format_cell(
+    mean, std, min_val, max_val, a_raw, a_std):
+    """Render the mean/SD/alpha summary shown in a single table cell."""
+    return (
+        f'{mean:.2f} <br> ({std:.2f}) <br> '
+        f'min/max {min_val:.2f} / {max_val:.2f} <br> '
+        f'α raw={a_raw:.2f} <br> α std={a_std:.2f}'
+    )
+
+def alpha_standardized(corr):
+    """Standardized alpha from a correlation matrix. == Stata `alpha ..., std`."""
+    R = np.asarray(corr, dtype=float)
+    if R.ndim != 2 or R.shape[0] != R.shape[1]:
+        raise ValueError("corr must be a square correlation matrix")
+    if np.isnan(R).any():
+        raise ValueError("corr contains NaNs")
+    k = R.shape[0]
+    if k < 2:
+        raise ValueError("need at least 2 items")
+    r_bar = R[~np.eye(k, dtype=bool)].mean()
+    return (k * r_bar) / (1 + (k - 1) * r_bar)
+
+
+def alpha_raw(df, ddof=1):
+    """Raw (covariance-based) alpha from the item data. == Stata `alpha ...`.
+ 
+    alpha = k/(k-1) * (1 - sum(item variances) / variance of the total)
+    """
+    S = np.asarray(pd.DataFrame(df).cov(ddof=ddof), dtype=float)
+    k = S.shape[0]
+    if k < 2:
+        raise ValueError("need at least 2 items")
+    return (k / (k - 1)) * (1 - np.trace(S) / S.sum())
+
+results = []
+
+for file in file_list:
+    # Load the data file
+    df = pd.read_csv(file, engine='python', on_bad_lines='skip')
+
+    # Remove observations with missing
+    df = df.dropna()
+
+    # Convert to numeric
+    df[prca_cols] = df[prca_cols].apply(pd.to_numeric, errors='coerce')
+
+    # Reverse code all prca_cols
+    df['prca_2'] = 6 - df['prca_2']
+    df['prca_4'] = 6 - df['prca_4']
+    df['prca_6'] = 6 - df['prca_5']
+    df['prca_8'] = 6 - df['prca_8']
+    df['prca_10'] = 6 - df['prca_10']
+    df['prca_11'] = 6 - df['prca_11']
+
+    # Build one cell per scale (Group CA, Interpersonal CA, Both)
+    row = {'file': file.split('/')[-1]}
+
+    for label, cols in scales.items():
+        scale_total = df[cols].sum(axis=1)
+
+        mean = scale_total.mean()
+        std = scale_total.std()
+        min_val = scale_total.min()
+        max_val = scale_total.max()
+
+        a_raw = alpha_raw(df[cols])
+        a_std = alpha_standardized(df[cols].corr())
+
+        row[label] = format_cell(mean, std, min_val, max_val, a_raw, a_std)
+
+    results.append(row)
+
+summary_table = pd.DataFrame(results)
+display(Markdown(summary_table.to_markdown()))
+```
+
+
+
+
