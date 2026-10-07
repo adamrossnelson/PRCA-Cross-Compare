@@ -50,3 +50,5 @@ env/
 /data/
 
 /.quarto/
+
+/data_human/human_responses.csv
