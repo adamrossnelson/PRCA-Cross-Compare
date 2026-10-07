@@ -8,59 +8,182 @@ title: "A comparison of results across multiple models."
 import pandas as pd
 import numpy as np
 
+import os
+
 from IPython.display import Markdown, display
 
-file_list = [
-    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/GPT-OSS_20B_temp_1.50.csv",
-    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/GPT-OSS_20B_temp_1.65.csv",
-    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/GPT-OSS_20B_temp_1.75.csv",
-    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/GPT-OSS_20B_temp_1.85.csv",
-    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/PRCA_qwen2.5_7b_results_tempOf_1.65.csv",
-    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/PRCA_qwen2.5_7b_results_tempOf_1.75.csv",
-    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/PRCA_qwen2.5_7b_results_tempOf_1.85.csv",
-    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/PRCA_qwen2.5_7b_results_tempOf_2.00.csv",
-    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/prca_results_llama3.2_3b_temp1.65_cleaned.csv",
-    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/prca_results_mistral-nemo_12b_temp1.65_cleaned.csv",
-    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/prca_results_qwen3.6_27b_temp1.65_cleaned.csv",
+file_list = []
+
+# Updated files following adjustment to api call available here:
+# https://github.com/adamrossnelson/SurveyResponderMemos/tree/main/memos/2026-09-30-temp-sweep-wider/data
+# Details on api call update: https://github.com/adamrossnelson/SurveyResponder/issues/18
+file_list += [
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/falcon3_1b_t0.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/falcon3_1b_t0.25.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/falcon3_1b_t0.5.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/falcon3_1b_t0.75.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/falcon3_1b_t1.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/falcon3_1b_t1.2.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/falcon3_1b_t1.4.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/falcon3_1b_t1.6.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/falcon3_1b_t1.8.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/falcon3_1b_t2.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite3.1-moe_1b_t0.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite3.1-moe_1b_t0.25.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite3.1-moe_1b_t0.5.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite3.1-moe_1b_t0.75.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite3.1-moe_1b_t1.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite3.1-moe_1b_t1.2.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite3.1-moe_1b_t1.25.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite3.1-moe_1b_t1.4.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite3.1-moe_1b_t1.5.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite3.1-moe_1b_t1.6.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite3.1-moe_1b_t1.7.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite3.1-moe_1b_t1.75.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite3.1-moe_1b_t1.8.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite3.1-moe_1b_t1.9.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite3.1-moe_1b_t2.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_350m_t0.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_350m_t0.25.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_350m_t0.5.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_350m_t0.75.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_350m_t1.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_350m_t1.2.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_350m_t1.4.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_350m_t1.6.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_350m_t1.8.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_350m_t2.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_3b_t0.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_3b_t0.25.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_3b_t0.5.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_3b_t0.75.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_3b_t1.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_3b_t1.2.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_3b_t1.4.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_3b_t1.6.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_3b_t1.8.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/granite4_3b_t2.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/lfm2_24b_t0.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/lfm2_24b_t0.25.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/lfm2_24b_t0.75.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/lfm2_24b_t1.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/lfm2_24b_t1.2.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/lfm2_24b_t1.4.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/lfm2_24b_t1.6.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/lfm2_24b_t1.8.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/lfm2_24b_t2.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/llama3.2_1b_t0.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/llama3.2_1b_t0.25.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/llama3.2_1b_t0.5.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/llama3.2_1b_t0.75.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/llama3.2_1b_t1.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/llama3.2_1b_t1.2.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/llama3.2_1b_t1.4.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/llama3.2_1b_t1.5.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/llama3.2_1b_t1.6.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/llama3.2_1b_t1.7.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/llama3.2_1b_t1.8.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/llama3.2_1b_t1.9.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/llama3.2_1b_t2.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/nemotron-mini_4b_t0.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/nemotron-mini_4b_t0.25.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/nemotron-mini_4b_t0.5.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/nemotron-mini_4b_t0.75.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/nemotron-mini_4b_t1.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/nemotron-mini_4b_t1.2.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/nemotron-mini_4b_t1.4.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/nemotron-mini_4b_t1.6.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/nemotron-mini_4b_t1.8.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/nemotron-mini_4b_t2.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/olmo2_7b_t0.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/olmo2_7b_t0.25.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/olmo2_7b_t0.5.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/olmo2_7b_t0.75.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/olmo2_7b_t1.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/olmo2_7b_t1.2.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/olmo2_7b_t1.4.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/olmo2_7b_t1.6.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/olmo2_7b_t1.8.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/olmo2_7b_t2.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/qwen2.5-coder_0.5b_t0.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/qwen2.5-coder_0.5b_t0.25.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/qwen2.5-coder_0.5b_t0.5.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/qwen2.5-coder_0.5b_t0.75.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/qwen2.5-coder_0.5b_t1.0.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/qwen2.5-coder_0.5b_t1.2.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/qwen2.5-coder_0.5b_t1.25.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/qwen2.5-coder_0.5b_t1.4.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/qwen2.5-coder_0.5b_t1.5.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/qwen2.5-coder_0.5b_t1.6.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/qwen2.5-coder_0.5b_t1.7.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/qwen2.5-coder_0.5b_t1.75.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/qwen2.5-coder_0.5b_t1.8.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/qwen2.5-coder_0.5b_t1.9.csv",
+    "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/temp-sweep-wider/qwen2.5-coder_0.5b_t2.0.csv"
 ]
+
+# These files we assume were generated at the default model temperatures.
+# file_list = [
+#     "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/GPT-OSS_20B_temp_1.50.csv",
+#     "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/GPT-OSS_20B_temp_1.65.csv",
+#     "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/GPT-OSS_20B_temp_1.75.csv",
+#     "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/GPT-OSS_20B_temp_1.85.csv",
+#     "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/PRCA_qwen2.5_7b_results_tempOf_1.65.csv",
+#     "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/PRCA_qwen2.5_7b_results_tempOf_1.75.csv",
+#     "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/PRCA_qwen2.5_7b_results_tempOf_1.85.csv",
+#     "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/PRCA_qwen2.5_7b_results_tempOf_2.00.csv",
+#     "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/prca_results_llama3.2_3b_temp1.65_cleaned.csv",
+#     "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/prca_results_mistral-nemo_12b_temp1.65_cleaned.csv",
+#     "https://raw.githubusercontent.com/adamrossnelson/SurveyResponderData/refs/heads/main/data/newGen/prca_results_qwen3.6_27b_temp1.65_cleaned.csv",
+# ]
 
 ```
 
 # Build Table
 
 ```{python}
-prca_cols = [f'prca_{i}' for i in range(1, 13)]
-group_cols = prca_cols[:6]
-interpersonal_cols = prca_cols[6:]
+prca_cols = ['prca01','prca02','prca03','prca04','prca05','prca06','prca13','prca14','prca15','prca16','prca17','prca18']
+group_cols = prca_cols[:6]  # Specify first six as the group ca columns
+inter_cols = prca_cols[6:]  # Specify last six as the interpersonal ca columns
 
 # Each scale we report on, mapped to the item columns that make it up.
 scales = {
     'Group CA': group_cols,
-    'Interpersonal CA': interpersonal_cols,
+    'Interpersonal CA': inter_cols,
     'Both Group and Interpersonal CA': prca_cols,
 }
 
 def format_cell(
     mean, std, min_val, max_val, a_raw, a_std):
     """Render the mean/SD/alpha summary shown in a single table cell."""
+    raw_text = a_raw if isinstance(a_raw, str) else f'{a_raw:.2f}'
+    std_text = a_std if isinstance(a_std, str) else f'{a_std:.2f}'
     return (
-        f'{mean:.2f} <br> ({std:.2f}) <br> '
-        f'min/max {min_val:.2f} / {max_val:.2f} <br> '
-        f'α raw={a_raw:.2f} <br> α std={a_std:.2f}'
+        f'Mean (SD): {mean:.2f} ({std:.2f}) <br><br> '
+        f'min/max {min_val:.2f} / {max_val:.2f} <br><br> '
+        f'α raw={raw_text} <br><br> α std={std_text}'
     )
 
-def alpha_standardized(corr):
+def alpha_standardized(corr, data):
     """Standardized alpha from a correlation matrix. == Stata `alpha ..., std`."""
     R = np.asarray(corr, dtype=float)
     if R.ndim != 2 or R.shape[0] != R.shape[1]:
         raise ValueError("corr must be a square correlation matrix")
-    if np.isnan(R).any():
-        raise ValueError("corr contains NaNs")
     k = R.shape[0]
     if k < 2:
         raise ValueError("need at least 2 items")
+    if len(data) < 2:
+        return 'N/A (fewer than 2 observations)'
+    constant_cols = data.columns[data.nunique(dropna=True).eq(1)]
+    if len(constant_cols):
+        return f'N/A (constant columns: {", ".join(map(str, constant_cols))})'
+    if not np.isfinite(R).all():
+        return 'N/A (undefined correlations)'
     r_bar = R[~np.eye(k, dtype=bool)].mean()
-    return (k * r_bar) / (1 + (k - 1) * r_bar)
+    denominator = 1 + (k - 1) * r_bar
+    if np.isclose(denominator, 0):
+        return 'N/A (zero standardized total variance)'
+    return (k * r_bar) / denominator
 
 
 def alpha_raw(df, ddof=1):
@@ -68,31 +191,59 @@ def alpha_raw(df, ddof=1):
  
     alpha = k/(k-1) * (1 - sum(item variances) / variance of the total)
     """
-    S = np.asarray(pd.DataFrame(df).cov(ddof=ddof), dtype=float)
-    k = S.shape[0]
+    data = pd.DataFrame(df)
+    k = data.shape[1]
     if k < 2:
         raise ValueError("need at least 2 items")
+    if len(data) < 2 or len(data) <= ddof:
+        return 'N/A (insufficient observations)'
+    constant_cols = data.columns[data.nunique(dropna=True).eq(1)]
+    if len(constant_cols):
+        return f'N/A (constant columns: {", ".join(map(str, constant_cols))})'
+    S = np.asarray(data.cov(ddof=ddof), dtype=float)
+    if not np.isfinite(S).all():
+        return 'N/A (undefined covariance)'
+    if np.isclose(S.sum(), 0):
+        return 'N/A (zero total variance)'
     return (k / (k - 1)) * (1 - np.trace(S) / S.sum())
 
+# Use os library to create data folder if it doesn't exist
+if not os.path.exists("data"):
+    os.makedirs("data")
+
+# Bring data local for faster renders
+for file in file_list:
+    # Check if file is local in the data folder
+    if not os.path.exists(f"data/{file.split('/')[-1]}"):
+        # If not local download the file
+        df = pd.read_csv(file, engine='python', on_bad_lines='skip')
+        # Save the file locally
+        df.to_csv(f"data/{file.split('/')[-1]}", index=False)
+
+# Instantiate empty results list
 results = []
 
-for file in file_list:
-    # Load the data file
-    df = pd.read_csv(file, engine='python', on_bad_lines='skip')
+for file in file_list[:2]:
+    # Extract file name only from full path in file_list
+    file_name = file.split('/')[-1]
 
-    # Remove observations with missing
-    df = df.dropna()
+    # Check if file is local
+    if os.path.exists(f"data/{file_name}"):
+        # Load the data file
+        df = pd.read_csv(f"data/{file_name}", engine='python', on_bad_lines='skip')
+    else:
+        # Download the file
+        df = pd.read_csv(file, engine='python', on_bad_lines='skip')
 
-    # Convert to numeric
+    # Track the starting number of observations
+    starting_obs = len(df)
+
+    # Remove observations (rows) that contained non-numeric values
     df[prca_cols] = df[prca_cols].apply(pd.to_numeric, errors='coerce')
+    df = df.dropna(subset=prca_cols)
 
-    # Reverse code all prca_cols
-    df['prca_2'] = 6 - df['prca_2']
-    df['prca_4'] = 6 - df['prca_4']
-    df['prca_6'] = 6 - df['prca_5']
-    df['prca_8'] = 6 - df['prca_8']
-    df['prca_10'] = 6 - df['prca_10']
-    df['prca_11'] = 6 - df['prca_11']
+    # Track the ending number of observations
+    ending_obs = len(df)
 
     # Build one cell per scale (Group CA, Interpersonal CA, Both)
     row = {'file': file.split('/')[-1]}
@@ -106,11 +257,11 @@ for file in file_list:
         max_val = scale_total.max()
 
         a_raw = alpha_raw(df[cols])
-        a_std = alpha_standardized(df[cols].corr())
+        a_std = alpha_standardized(df[cols].corr(), df[cols])
 
         row[label] = format_cell(mean, std, min_val, max_val, a_raw, a_std)
 
-    results.append(row)
+        results.append(row)
 
 summary_table = pd.DataFrame(results)
 display(Markdown(summary_table.to_markdown()))
