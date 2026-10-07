@@ -11,6 +11,7 @@ import numpy as np
 import os
 
 from scipy import stats
+from scipy.spatial.distance import jensenshannon
 
 from IPython.display import Markdown, display
 
@@ -174,8 +175,29 @@ def effect_vs_human(llm_totals, human_totals):
     d_text = 'N/A (zero pooled SD)' if np.isclose(pooled_sd, 0) else f'{diff / pooled_sd:.2f}'
     return f'Mean diff={diff:.2f} <br> Cohen\'s d={d_text}'
 
+response_levels = [1, 2, 3, 4, 5]
+
+def level_proportions(data):
+    """Proportion of item responses at each level (1-5), pooled across the items in `data`."""
+    values = np.asarray(data, dtype=float).ravel()
+    counts = np.array([(values == level).sum() for level in response_levels], dtype=float)
+    return counts / counts.sum() if counts.sum() > 0 else None
+
+def distribution_vs_human(llm_props, human_props):
+    """Similarity of the LLM and human response-level distributions (0 = identical, 1 = maximally different).
+
+    Total variation distance = 0.5 * sum|p - q|; Jensen-Shannon distance uses log base 2.
+    Wasserstein (earth mover's) distance treats levels as ordered; it is in response-level units (0 to 4).
+    """
+    if llm_props is None or human_props is None:
+        return 'N/A (no valid responses)'
+    tvd = 0.5 * np.abs(llm_props - human_props).sum()
+    js = jensenshannon(llm_props, human_props, base=2)
+    wd = stats.wasserstein_distance(response_levels, response_levels, llm_props, human_props)
+    return f'Distribution distance vs human: <br> TVD={tvd:.2f}, JS={js:.2f}, WD={wd:.2f}'
+
 def format_cell(
-    mean, std, min_val, max_val, a_raw, a_std, prop_validated, t_test=None, effect=None):
+    mean, std, min_val, max_val, a_raw, a_std, prop_validated, t_test=None, effect=None, dist=None):
     """Render the mean/SD/alpha summary shown in a single table cell."""
     raw_text = a_raw if isinstance(a_raw, str) else f'{a_raw:.2f}'
     std_text = a_std if isinstance(a_std, str) else f'{a_std:.2f}'
@@ -189,6 +211,8 @@ def format_cell(
         text += f'<br><br>t-test vs human: {t_test}'
     if effect is not None:
         text += f'<br><br>{effect}'
+    if dist is not None:
+        text += f'<br><br>{dist}'
     return text
 
 def alpha_standardized(corr, data):
@@ -258,10 +282,12 @@ df[to_reverse] = 6 - df[to_reverse]
 df = df.dropna()
 row = {'file': 'human_responses.csv'}
 human_totals = {}
+human_props = {}
 
 for label, cols in scales.items():
     scale_total = df[cols].sum(axis=1)
     human_totals[label] = scale_total
+    human_props[label] = level_proportions(df[cols])
 
     mean = scale_total.mean()
     std = scale_total.std()
@@ -324,9 +350,10 @@ for file in file_list:
 
         t_test = ttest_vs_human(scale_total, human_totals[label])
         effect = effect_vs_human(scale_total, human_totals[label])
+        dist = distribution_vs_human(level_proportions(df[cols]), human_props[label])
 
         row[label] = format_cell(
-            mean, std, min_val, max_val, a_raw, a_std, prop_validated, t_test, effect)
+            mean, std, min_val, max_val, a_raw, a_std, prop_validated, t_test, effect, dist)
 
     results.append(row)
 
