@@ -48,3 +48,5 @@ env/
 .ruff_cache/
 
 /data/
+
+/.quarto/

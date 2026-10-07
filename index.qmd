@@ -154,14 +154,15 @@ scales = {
 }
 
 def format_cell(
-    mean, std, min_val, max_val, a_raw, a_std):
+    mean, std, min_val, max_val, a_raw, a_std, prop_validated):
     """Render the mean/SD/alpha summary shown in a single table cell."""
     raw_text = a_raw if isinstance(a_raw, str) else f'{a_raw:.2f}'
     std_text = a_std if isinstance(a_std, str) else f'{a_std:.2f}'
     return (
         f'Mean (SD): {mean:.2f} ({std:.2f}) <br><br> '
         f'min/max {min_val:.2f} / {max_val:.2f} <br><br> '
-        f'α raw={raw_text} <br><br> α std={std_text}'
+        f'α raw={raw_text} <br> α std={std_text} <br><br>'
+        f'Prop Validated: {prop_validated:.2f}'
     )
 
 def alpha_standardized(corr, data):
@@ -176,7 +177,8 @@ def alpha_standardized(corr, data):
         return 'N/A (fewer than 2 observations)'
     constant_cols = data.columns[data.nunique(dropna=True).eq(1)]
     if len(constant_cols):
-        return f'N/A (constant columns: {", ".join(map(str, constant_cols))})'
+        # return f'N/A (constant columns: {", ".join(map(str, constant_cols))})'
+        return 'N/A (constant cols'
     if not np.isfinite(R).all():
         return 'N/A (undefined correlations)'
     r_bar = R[~np.eye(k, dtype=bool)].mean()
@@ -199,7 +201,8 @@ def alpha_raw(df, ddof=1):
         return 'N/A (insufficient observations)'
     constant_cols = data.columns[data.nunique(dropna=True).eq(1)]
     if len(constant_cols):
-        return f'N/A (constant columns: {", ".join(map(str, constant_cols))})'
+        # return f'N/A (constant columns: {", ".join(map(str, constant_cols))})'
+        return 'N/A (constant cols)'
     S = np.asarray(data.cov(ddof=ddof), dtype=float)
     if not np.isfinite(S).all():
         return 'N/A (undefined covariance)'
@@ -223,7 +226,7 @@ for file in file_list:
 # Instantiate empty results list
 results = []
 
-for file in file_list[:2]:
+for file in file_list:
     # Extract file name only from full path in file_list
     file_name = file.split('/')[-1]
 
@@ -259,9 +262,12 @@ for file in file_list[:2]:
         a_raw = alpha_raw(df[cols])
         a_std = alpha_standardized(df[cols].corr(), df[cols])
 
-        row[label] = format_cell(mean, std, min_val, max_val, a_raw, a_std)
+        prop_validated = ending_obs / starting_obs
 
-        results.append(row)
+        row[label] = format_cell(
+            mean, std, min_val, max_val, a_raw, a_std, prop_validated)
+
+    results.append(row)
 
 summary_table = pd.DataFrame(results)
 display(Markdown(summary_table.to_markdown()))
