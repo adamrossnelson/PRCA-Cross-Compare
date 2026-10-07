@@ -26,7 +26,7 @@ $RECYCLE.BIN/
 
 # Quarto artifacts
 .quarto/
-/.quarto/
+/_site/
 *_files/
 *_cache/
 /index.html
@@ -46,3 +46,5 @@ env/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+
+/data/
