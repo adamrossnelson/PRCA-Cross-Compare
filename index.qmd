@@ -10,6 +10,8 @@ import numpy as np
 
 import os
 
+from scipy import stats
+
 from IPython.display import Markdown, display
 
 file_list = []
@@ -153,17 +155,41 @@ scales = {
     'Both Group and Interpersonal CA': prca_cols,
 }
 
+def ttest_vs_human(llm_totals, human_totals):
+    """Welch's t-test (unequal variances) of LLM scale totals vs human scale totals."""
+    if len(llm_totals) < 2 or len(human_totals) < 2:
+        return 'N/A (insufficient observations)'
+    if llm_totals.nunique() == 1 and human_totals.nunique() == 1:
+        return 'N/A (no variance)'
+    t_stat, p_val = stats.ttest_ind(llm_totals, human_totals, equal_var=False)
+    return f't={t_stat:.2f}, p={p_val:.3f}'
+
+def effect_vs_human(llm_totals, human_totals):
+    """Mean difference (LLM - human) and Cohen's d using the pooled standard deviation."""
+    n1, n2 = len(llm_totals), len(human_totals)
+    if n1 < 2 or n2 < 2:
+        return 'N/A (insufficient observations)'
+    diff = llm_totals.mean() - human_totals.mean()
+    pooled_sd = np.sqrt(((n1 - 1) * llm_totals.var(ddof=1) + (n2 - 1) * human_totals.var(ddof=1)) / (n1 + n2 - 2))
+    d_text = 'N/A (zero pooled SD)' if np.isclose(pooled_sd, 0) else f'{diff / pooled_sd:.2f}'
+    return f'Mean diff={diff:.2f} <br> Cohen\'s d={d_text}'
+
 def format_cell(
-    mean, std, min_val, max_val, a_raw, a_std, prop_validated):
+    mean, std, min_val, max_val, a_raw, a_std, prop_validated, t_test=None, effect=None):
     """Render the mean/SD/alpha summary shown in a single table cell."""
     raw_text = a_raw if isinstance(a_raw, str) else f'{a_raw:.2f}'
     std_text = a_std if isinstance(a_std, str) else f'{a_std:.2f}'
-    return (
+    text = (
         f'Mean (SD): {mean:.2f} ({std:.2f}) <br><br> '
         f'min/max {min_val:.2f} / {max_val:.2f} <br><br> '
         f'α raw={raw_text} <br> α std={std_text} <br><br>'
         f'Prop Validated: {prop_validated:.2f}'
     )
+    if t_test is not None:
+        text += f'<br><br>t-test vs human: {t_test}'
+    if effect is not None:
+        text += f'<br><br>{effect}'
+    return text
 
 def alpha_standardized(corr, data):
     """Standardized alpha from a correlation matrix. == Stata `alpha ..., std`."""
@@ -226,6 +252,32 @@ for file in file_list:
 # Instantiate empty results list
 results = []
 
+df = pd.read_csv("data_human/human_responses.csv")
+to_reverse = ['prca02', 'prca04', 'prca06', 'prca14', 'prca16', 'prca17']
+df[to_reverse] = 6 - df[to_reverse]
+df = df.dropna()
+row = {'file': 'human_responses.csv'}
+human_totals = {}
+
+for label, cols in scales.items():
+    scale_total = df[cols].sum(axis=1)
+    human_totals[label] = scale_total
+
+    mean = scale_total.mean()
+    std = scale_total.std()
+    min_val = scale_total.min()
+    max_val = scale_total.max()
+
+    a_raw = alpha_raw(df[cols])
+    a_std = alpha_standardized(df[cols].corr(), df[cols])
+
+    prop_validated = 1.0
+
+    row[label] = format_cell(
+        mean, std, min_val, max_val, a_raw, a_std, prop_validated)
+
+results.append(row)
+
 for file in file_list:
     # Extract file name only from full path in file_list
     file_name = file.split('/')[-1]
@@ -248,6 +300,12 @@ for file in file_list:
     # Track the ending number of observations
     ending_obs = len(df)
 
+    # Check for values outside 0-5 range
+    if df[prca_cols][df[prca_cols] > 5].sum().sum() > 0 or df[prca_cols][df[prca_cols] < 0].sum().sum() > 0:
+        print(f"File: {file_name} (WARNING: Values outside 0-5 range detected)")
+        print(f"Observations with values > 5: {df[prca_cols][df[prca_cols] > 5].sum().sum()}")
+        print(f"Observations with values < 0: {df[prca_cols][df[prca_cols] < 0].sum().sum()}")
+
     # Build one cell per scale (Group CA, Interpersonal CA, Both)
     row = {'file': file.split('/')[-1]}
 
@@ -264,8 +322,11 @@ for file in file_list:
 
         prop_validated = ending_obs / starting_obs
 
+        t_test = ttest_vs_human(scale_total, human_totals[label])
+        effect = effect_vs_human(scale_total, human_totals[label])
+
         row[label] = format_cell(
-            mean, std, min_val, max_val, a_raw, a_std, prop_validated)
+            mean, std, min_val, max_val, a_raw, a_std, prop_validated, t_test, effect)
 
     results.append(row)
 

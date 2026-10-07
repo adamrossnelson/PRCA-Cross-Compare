@@ -13,7 +13,7 @@ A Quarto document that compares PRCA (Personal Report of Communication Apprehens
 ## Requirements
 
 - [Quarto](https://quarto.org/)
-- Python with `pandas` and `numpy`
+- Python with `pandas`, `numpy`, and `scipy`
 
 ## Usage
 
